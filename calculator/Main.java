@@ -5,7 +5,7 @@ import java.util.Stack;
 import java.util.regex.Pattern;
 
 public class Main {
-    static final Pattern digits = Pattern.compile("^-?(0|[1-9]\\d*)(?<!-0)$");
+    static final Pattern validateInput = Pattern.compile("^[\\d-]?[\\d\\h+-]*[\\d]$");
     static final Stack<Integer> stack = new Stack<>();
 
     public static void main(String[] args) {
@@ -31,16 +31,12 @@ public class Main {
                 continue;
             }
 
-            for (var number : input.split("\\s")) {
-                if (number.matches(digits.pattern())) {
-                    stack.push(Integer.parseInt(number));
-                } else {
-                    System.out.printf("Invalid input: %s%n", number);
-                    break;
-                }
+            if (input.matches(validateInput.pattern())) {
+                Processor calc = new Processor();
+                System.out.println(calc.processInput(input));
+            } else {
+                System.out.println("Invalid input. Try again.");
             }
-
-            sumNumbers();
         }
     }
 
@@ -49,7 +45,10 @@ public class Main {
             case "/exit":
                 return true;
             case "/help":
-                System.out.println("Calculate the sum of integers (whole numbers) input on a single line separated by spaces.");
+                System.out.println("Calculate the total of integers (whole numbers) input on a single line separated by the");
+                System.out.println("operators + or - with a space between the integers and operators. i.e. -2 + 4, not -2+4.");
+                System.out.println("Multiple consecutive same operators will be treated as addition if +'s or even amount of");
+                System.out.println("-'s, as subtraction if odd amount of -'s.");
                 break;
             default:
                 System.out.println("Unknown command: " + command);
@@ -57,13 +56,5 @@ public class Main {
         }
 
         return false;
-    }
-
-    private static void sumNumbers() {
-        int sum = 0;
-        while (!stack.empty()) {
-            sum += stack.pop();
-        }
-        System.out.println(sum);
     }
 }
