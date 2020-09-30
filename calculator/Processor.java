@@ -27,7 +27,7 @@ public class Processor {
                     }
                     break;
                 default:
-                    System.out.println("Invalid input: " + operator);
+                    System.out.println("Invalid operator: " + operator);
                     break;
             }
         }

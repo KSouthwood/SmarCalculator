@@ -35,7 +35,7 @@ public class Main {
                 Processor calc = new Processor();
                 System.out.println(calc.processInput(input));
             } else {
-                System.out.println("Invalid input. Try again.");
+                System.out.println("Invalid expression");
             }
         }
     }
@@ -51,7 +51,7 @@ public class Main {
                 System.out.println("-'s, as subtraction if odd amount of -'s.");
                 break;
             default:
-                System.out.println("Unknown command: " + command);
+                System.out.println("Unknown command:");
                 break;
         }
 
