@@ -1,12 +1,10 @@
 package calculator;
 
 import java.util.Scanner;
-import java.util.Stack;
 import java.util.regex.Pattern;
 
 public class Main {
     static final Pattern validateInput = Pattern.compile("^[\\d-]?[\\d\\h+-]*[\\d]$");
-    static final Stack<Integer> stack = new Stack<>();
 
     public static void main(String[] args) {
         readInput();
@@ -14,11 +12,12 @@ public class Main {
     }
 
     private static void readInput() {
+        Processor calc = new Processor();
         boolean keepReading = true;
         Scanner scanner = new Scanner(System.in);
+
         while (keepReading) {
-            stack.clear();
-            String input = scanner.nextLine();
+            String input = scanner.nextLine().trim();
 
             if (input.isBlank()) {
                 continue;
@@ -31,12 +30,12 @@ public class Main {
                 continue;
             }
 
-            if (input.matches(validateInput.pattern())) {
-                Processor calc = new Processor();
-                System.out.println(calc.processInput(input));
-            } else {
-                System.out.println("Invalid expression");
+            if (input.contains("=")) {
+                calc.assignToVariable(input);
+                continue;
             }
+
+            calc.processInput(input);
         }
     }
 
@@ -51,7 +50,7 @@ public class Main {
                 System.out.println("-'s, as subtraction if odd amount of -'s.");
                 break;
             default:
-                System.out.println("Unknown command:");
+                System.out.println("Unknown command");
                 break;
         }
 
