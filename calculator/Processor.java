@@ -1,117 +1,173 @@
 package calculator;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Stack;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Processor {
-    static final Pattern validInteger = Pattern.compile("^-?(0|[1-9]\\d*)(?<!-0)$");
-    static final Pattern validVariableName = Pattern.compile("[a-zA-Z]+");
-    static final Pattern variableAssign = Pattern.compile("[a-zA-Z]+[\\s]*=[\\s]*((-?(0|[1-9]\\d*)(?<!-0))|[a-zA-Z]+)$");
-    static final Pattern validAddition = Pattern.compile("^\\++$");
-    static final Pattern validSubtraction = Pattern.compile("^-+$");
-    
-    static ArrayDeque<String> inputQueue;
+    private static final Pattern VALID_INTEGER = Pattern.compile("-?(0|[1-9]\\d*)(?<!-0)");
+    private static final Pattern VARIABLE_NAME = Pattern.compile("([a-zA-Z]+)");
+    private static final Pattern ADDITION = Pattern.compile("[+]+");
+    private static final Pattern SUBTRACTION = Pattern.compile("[-]+");
+    private static final Pattern MULTIPLICATION = Pattern.compile("[*]+");
+    private static final Pattern DIVISION = Pattern.compile("/+");
+    private static final Pattern EXPONENT = Pattern.compile("[\\^]+");
+    private static final Pattern PARENTHESES = Pattern.compile("[()]");
 
-    private long result;
+    private static final Pattern INPUT_PATTERN = Pattern.compile(VARIABLE_NAME +
+            "|(" + ADDITION + "|" + SUBTRACTION + "|" + MULTIPLICATION + "|" +
+            DIVISION + "|" + EXPONENT + "|" + PARENTHESES + ")|" + VALID_INTEGER);
+
+    private static final Stack<String> operatorStack = new Stack<>();
     private final HashMap<String, Long> variableMap = new HashMap<>();
+    private static final StringBuilder postfixExpression = new StringBuilder();
 
     public void processInput(String input) {
-        String[] inputArray = input.split("\\s+");
+        postfixExpression.setLength(0);
+        operatorStack.clear();
+        Matcher matcher = INPUT_PATTERN.matcher(input);
 
-        // process and simplify input, handling input errors along the way
-        StringBuilder newExpression = new StringBuilder();
-        for (var piece : inputArray) {
-            if (validInteger.matcher(piece).matches()) {
-                newExpression.append(piece).append(" ");
+        while (matcher.find()) {
+            // integer match
+            if (matcher.group(3) != null) {
+                postfixExpression.append(matcher.group()).append(" ");
                 continue;
             }
 
-            if (validVariableName.matcher(piece).matches()) {
-                if (variableMap.containsKey(piece)) {
-                    newExpression.append(piece).append(" ");
+            // variable name match
+            if (matcher.group(1) != null) {
+                if (variableMap.containsKey(matcher.group())) {
+                    postfixExpression.append(variableMap.get(matcher.group())).append(" ");
                     continue;
                 } else {
-                    System.out.println("Unknown variable");
+                    System.out.println("Unknown variable: " + matcher.group());
                     return;
                 }
             }
 
-            if (validAddition.matcher(piece).matches()) {
-                newExpression.append("+ ");
+            // operator match
+            if (matcher.group(2) != null) {
+                switch (matcher.group().charAt(0)) {
+                    case '(':
+                        operatorStack.push("(");
+                        break;
+                    case ')':
+                        boolean leftFound = false;
+                        while (!operatorStack.isEmpty()) {
+                            if (!operatorStack.peek().equals("(")) {
+                                postfixExpression.append(operatorStack.pop()).append(" ");
+                            } else {
+                                operatorStack.pop();
+                                leftFound = true;
+                                break;
+                            }
+                        }
+                        if (!leftFound) {
+                            System.out.println("Invalid expression");
+                            return;
+                        }
+                        break;
+                    case '+':
+                        pushOperator("+", "");
+                        break;
+                    case '-':
+                        pushOperator(matcher.group().length() % 2 == 0 ? "+" : "-", "");
+                        break;
+                    case '*':
+                        if (matcher.group().length() > 1) {
+                            System.out.println("Invalid expression");
+                            return;
+                        }
+                        pushOperator("*", "[-+]");
+                        break;
+                    case '/':
+                        if (matcher.group().length() > 1) {
+                            System.out.println("Invalid expression");
+                            return;
+                        }
+                        pushOperator("/", "[-+]");
+                        break;
+                    case '^':
+                        if (matcher.group().length() > 1) {
+                            System.out.println("Invalid expression");
+                            return;
+                        }
+                        pushOperator("^", "[-+*/]");
+                        break;
+                    default:
+                        break;
+                }
                 continue;
             }
 
-            if (validSubtraction.matcher(piece).matches()) {
-                newExpression.append(piece.length() % 2 == 0 ? "+ " : "- ");
-                continue;
-            }
-
-            System.out.println("Invalid token: " + piece);
+            System.out.println("Invalid operand: " + matcher.group());
             return;
         }
 
-        calculateResult(newExpression.toString());
+        while (!operatorStack.isEmpty()) {
+            if (operatorStack.peek().equals("(")) {
+                System.out.println("Invalid expression");
+                return;
+            }
+            postfixExpression.append(operatorStack.pop()).append(" ");
+        }
+
+//        System.out.println(postfixExpression.toString().trim());
+        calculateResult(postfixExpression.toString().trim());
+    }
+
+    private void pushOperator(String operator, String lowerPrecedence) {
+        if (operatorStack.isEmpty() || operatorStack.peek().contains("(")) {
+            operatorStack.push(operator);
+        } else if (operatorStack.peek().matches(lowerPrecedence)) {
+            operatorStack.push(operator);
+        } else {
+            while (!operatorStack.isEmpty() && !operatorStack.peek().matches("\\(") && !operatorStack.peek().matches(lowerPrecedence)) {
+                postfixExpression.append(operatorStack.pop()).append(" ");
+            }
+            operatorStack.push(operator);
+        }
     }
 
     private void calculateResult(String expression) {
-        inputQueue = new ArrayDeque<>(Arrays.asList(expression.split("\\s")));
-        result = 0;
+        Stack<Long> resultStack = new Stack<>();
 
-        while (!inputQueue.isEmpty()) {
-            String part = inputQueue.pollFirst();
-
-            if (validInteger.matcher(part).matches()) { // should only ever execute with a number as the first item on the line
-                result = Long.parseLong(part);
+        for (var operand : expression.split("\\s")) {
+            if (operand.matches(VALID_INTEGER.pattern())) {
+                resultStack.push(Long.parseLong(operand));
+                continue;
             }
 
-            if (validVariableName.matcher(part).matches()) {
-                if (variableMap.containsKey(part)) {
-                    result = variableMap.get(part);
-                } else {
-                    System.out.println("Unknown variable");
+            switch (operand) {
+                case "+":
+                    resultStack.push(resultStack.pop() + resultStack.pop());
+                    break;
+                case "-":
+                    long subtrahend = resultStack.pop();
+                    resultStack.push(resultStack.pop() - subtrahend);
+                    break;
+                case "*":
+                    resultStack.push(resultStack.pop() * resultStack.pop());
+                    break;
+                case "/":
+                    long divisor = resultStack.pop();
+                    resultStack.push(resultStack.pop() / divisor);
+                    break;
+                case "^":
+                    double exponent = (double) resultStack.pop();
+                    double base = (double) resultStack.pop();
+                    resultStack.push((long) Math.pow(base, exponent));
+                    break;
+                default:
+                    System.out.println("Error! Invalid operator: " + operand);
                     return;
-                }
-            }
-
-            if (part.equals("+")) {
-                add(inputQueue.pollFirst());
-            }
-
-            if (part.equals("-")) {
-                subtract(inputQueue.pollFirst());
             }
         }
 
-        System.out.println(result);
-    }
-
-    private void add(String addend) {
-        if (addend.matches(validInteger.pattern())) {
-            result += Long.parseLong(addend);
-        } else if (validVariableName.matcher(addend).matches()) {
-            if (variableMap.containsKey(addend)) {
-                result += variableMap.get(addend);
-            } else {
-                System.out.println("Unknown variable");
-            }
-        } else {
-            System.out.println("Invalid input: " + addend);
-        }
-    }
-
-    private void subtract(String subtrahend) {
-        if (subtrahend.matches(validInteger.pattern())) {
-            result -= Long.parseLong(subtrahend);
-        } else if (validVariableName.matcher(subtrahend).matches()) {
-            if (variableMap.containsKey(subtrahend)) {
-                result -= variableMap.get(subtrahend);
-            } else {
-                System.out.println("Unknown variable");
-            }
-        } else {
-            System.out.println("Invalid input: " + subtrahend);
+        System.out.println(resultStack.pop());
+        if (!resultStack.isEmpty()) {
+            System.out.println("Calculation error! Numbers still in stack!");
         }
     }
 
@@ -122,24 +178,24 @@ public class Processor {
      * @param input String to be parsed
      */
     public void assignToVariable(String input) {
-        inputQueue = new ArrayDeque<>(Arrays.asList(input.split("\\s*=\\s*")));
-        if (inputQueue.size() != 2) {
+        String[] operands = input.split("\\s*=\\s*");
+        if (operands.length != 2) {
             System.out.println("Invalid assignment");
             return;
         }
 
-        String assignor = inputQueue.pollFirst();
-        String assignee = inputQueue.pollFirst();
+        String assignor = operands[0];
+        String assignee = operands[1];
 
-        if (!validVariableName.matcher(assignor).matches()) {
+        if (!VARIABLE_NAME.matcher(assignor).matches()) {
             // The first item isn't a valid variable name
             System.out.println("Invalid identifier");
             return;
         }
 
-        if (validInteger.matcher(assignee).matches()) {
+        if (VALID_INTEGER.matcher(assignee).matches()) {
             variableMap.put(assignor, Long.parseLong(assignee)); // assign the integer to the variable
-        } else if (validVariableName.matcher(assignee).matches()) { // check if we have a variable name
+        } else if (VARIABLE_NAME.matcher(assignee).matches()) { // check if we have a variable name
             if (variableMap.containsKey(assignee)) {
                 // variable exists so assign its value to variableName
                 variableMap.put(assignor, variableMap.get(assignee));

@@ -1,11 +1,8 @@
 package calculator;
 
 import java.util.Scanner;
-import java.util.regex.Pattern;
 
 public class Main {
-    static final Pattern validateInput = Pattern.compile("^[\\d-]?[\\d\\h+-]*[\\d]$");
-
     public static void main(String[] args) {
         readInput();
         System.out.println("Bye!");
