@@ -1,5 +1,6 @@
 package calculator;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Stack;
 import java.util.regex.Matcher;
@@ -20,7 +21,7 @@ public class Processor {
             DIVISION + "|" + EXPONENT + "|" + PARENTHESES + ")|" + VALID_INTEGER);
 
     private static final Stack<String> operatorStack = new Stack<>();
-    private final HashMap<String, Long> variableMap = new HashMap<>();
+    private final HashMap<String, BigInteger> variableMap = new HashMap<>();
     private static final StringBuilder postfixExpression = new StringBuilder();
 
     public void processInput(String input) {
@@ -131,33 +132,33 @@ public class Processor {
     }
 
     private void calculateResult(String expression) {
-        Stack<Long> resultStack = new Stack<>();
+        Stack<BigInteger> resultStack = new Stack<>();
 
         for (var operand : expression.split("\\s")) {
             if (operand.matches(VALID_INTEGER.pattern())) {
-                resultStack.push(Long.parseLong(operand));
+                resultStack.push(new BigInteger(operand));
                 continue;
             }
 
             switch (operand) {
                 case "+":
-                    resultStack.push(resultStack.pop() + resultStack.pop());
+                    resultStack.push(resultStack.pop().add(resultStack.pop()));
                     break;
                 case "-":
-                    long subtrahend = resultStack.pop();
-                    resultStack.push(resultStack.pop() - subtrahend);
+                    BigInteger subtrahend = resultStack.pop();
+                    resultStack.push(resultStack.pop().subtract(subtrahend));
                     break;
                 case "*":
-                    resultStack.push(resultStack.pop() * resultStack.pop());
+                    resultStack.push(resultStack.pop().multiply(resultStack.pop()));
                     break;
                 case "/":
-                    long divisor = resultStack.pop();
-                    resultStack.push(resultStack.pop() / divisor);
+                    BigInteger divisor = resultStack.pop();
+                    resultStack.push(resultStack.pop().divide(divisor));
                     break;
                 case "^":
-                    double exponent = (double) resultStack.pop();
-                    double base = (double) resultStack.pop();
-                    resultStack.push((long) Math.pow(base, exponent));
+                    int exponent = resultStack.pop().intValue();
+                    BigInteger base = resultStack.pop();
+                    resultStack.push(base.pow(exponent));
                     break;
                 default:
                     System.out.println("Error! Invalid operator: " + operand);
@@ -194,7 +195,7 @@ public class Processor {
         }
 
         if (VALID_INTEGER.matcher(assignee).matches()) {
-            variableMap.put(assignor, Long.parseLong(assignee)); // assign the integer to the variable
+            variableMap.put(assignor, new BigInteger(assignee)); // assign the integer to the variable
         } else if (VARIABLE_NAME.matcher(assignee).matches()) { // check if we have a variable name
             if (variableMap.containsKey(assignee)) {
                 // variable exists so assign its value to variableName
